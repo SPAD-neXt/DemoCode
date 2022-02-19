@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.1.32210.238
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RemoteSerialDemo", "RemoteSerialDemo.csproj", "{F8B6AEFB-0EF1-42B9-A470-E8A40F6E4E34}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F8B6AEFB-0EF1-42B9-A470-E8A40F6E4E34}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F8B6AEFB-0EF1-42B9-A470-E8A40F6E4E34}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F8B6AEFB-0EF1-42B9-A470-E8A40F6E4E34}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F8B6AEFB-0EF1-42B9-A470-E8A40F6E4E34}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D7550051-1130-4C90-B2EF-F6BBF2E95D5B}
+	EndGlobalSection
+EndGlobal

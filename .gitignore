@@ -3,3 +3,6 @@
 ################################################################################
 
 /SerialV2/RemoteSerialDemo/bin/Debug
+/SerialV2/RemoteSerialDemo/obj/Debug
+*.user
+/SerialV2/RemoteSerialDemo/.vs
