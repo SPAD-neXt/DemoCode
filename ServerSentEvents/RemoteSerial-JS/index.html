@@ -11,6 +11,8 @@ var AuthorID = "3870169da23f7cc86823120e6063521a";
 var Version = "1.0";
 var InstanceID = 1;
 
+var remoteHost = "http://127.0.0.1:28001/";
+
 var sessionId = "";
 var apiKey = "";
 
@@ -31,19 +33,19 @@ function SPAD_Push(msg) { curStack = curStack + msg; }
 
 function SPAD_SendEvent(msg)
 {	
-	$.post("http://127.0.0.1:28002/serialapi/" + sessionId + "/event?apikey="+apiKey, { Message: curStack + msg }, function () { }).fail(onError);
+	$.post(remoteHost+"serialapi/" + sessionId + "/event?apikey="+apiKey, { Message: curStack + msg }, function () { }).fail(onError);
 	curStack = "";
 };
 
 function SPAD_ConnectSerial()
 {	
-	 $.post("http://127.0.0.1:28002/serialapi/" + sessionId + "/connect?apikey="+apiKey, { DeviceID: DeviceID, InstanceID: InstanceID }, function () { }).fail(onError);
+	 $.post(remoteHost+"serialapi/" + sessionId + "/connect?apikey="+apiKey, { DeviceID: DeviceID, InstanceID: InstanceID }, function () { }).fail(onError);
 };
 
 function SPAD_ConnectEventSource()
 {
 // Authenticate to SPAD
-  var source = new EventSource('http://127.0.0.1:28002/event-stream?apikey='+apiKey);
+  var source = new EventSource(remoteHost+'event-stream?apikey='+apiKey);
   $(source).handleServerEvents({
            handlers: {
                   onConnect: function (subscription) {
@@ -60,7 +62,9 @@ function SPAD_ConnectEventSource()
 			receivers: {
 				spad: {
 					debug: function(msg) { console.log('DEBUG: ',msg); },
-					msg: function (spadmessage) {
+					ChannelJoin: function(msg) { console.log("Joined",msg.Channel); },
+					ChannelLeave: function(msg) { console.log("Left",msg.Channel); },
+					SerialMsg: function (spadmessage) {
 						parts = spadmessage.split(";")[0].split(",");
 						console.log(parts);
 						if (parts[1] == "INIT")
@@ -88,12 +92,19 @@ function SPAD_ConnectEventSource()
 if (apiKey == "")
 {
 	console.log("Challenging SPAD");
-	$.post("http://127.0.0.1:28002/challenge",{ }, function () { }).fail(onError);
+	$.post(remoteHost+"challenge",{ }, function () { }).fail(onError);
 	let challResponse = prompt("Enter Challenge Key","");
 	console.log("You entered",challResponse)
-	$.post("http://127.0.0.1:28002/challenge?format=json",{ Token:challResponse }, function (data) { 
-		apiKey = data.ApiKey;
-		SPAD_ConnectEventSource(); 
+	$.post(remoteHost+"challenge/accept?format=json",{ Token:challResponse }, function (data) { 
+	    if (data.Success)
+		{
+			apiKey = data.Result.ApiKey;
+			SPAD_ConnectEventSource(); 
+		}
+		else
+		{
+			alert("Challenge failed!");
+		}
 	}).fail(onError);
 }
 </script>

@@ -23,7 +23,7 @@ namespace SSERemoteSerial
         public static string SessionId { get; private set; }
         static void Main(string[] args)
         {
-            var baseUri = "http://127.0.0.1:28002/"; // Start SSEProxy first! connect to Proxy. (Once SPAD 0.9.12.97 get's released change the port to 28001)
+            var baseUri = "http://127.0.0.1:28001/"; 
             var apiKey = String.Empty;
 
             if (String.IsNullOrEmpty(apiKey))
@@ -39,14 +39,14 @@ namespace SSERemoteSerial
                 Console.Write("Please enter challengetoken :");
                 var challToken = Console.ReadLine();
 
-                var authReply = authClient.Post(new Challenge { Token = challToken });
+                var authReply = authClient.Post(new ChallengeAccept { Token = challToken });
                 if (!authReply.Success)
                 {
                     Console.WriteLine("Challenge failed");
                     return;
                 }
 
-                // It's safe to store the apikey. It will only change if user actively changes it
+                // It's safe to store the apikey permanently. It will only change if user actively changes it
                 apiKey = authReply.Result.ApiKey;
 
                 authClient = null; // not needed anymore
@@ -100,7 +100,8 @@ namespace SSERemoteSerial
         public void debug(string msg) => Console.WriteLine("DEBUG " + msg);
         public void error(string msg) => Console.WriteLine("ERROR " + msg);
 
-        public void ChannelJoin(ChannelJoin data) => Console.WriteLine("Joined channel '" + data.Channel + "'");
+        public void ChannelJoin(ChannelEvent data) => Console.WriteLine("Joined channel '" + data.Channel + "'");
+        public void ChannelLeave(ChannelEvent data) => Console.WriteLine("Left channel '" + data.Channel + "'");
         public void NetworkEvent(NetworkEvent eventData)
         {
             Console.WriteLine($"Networkevent {eventData.EventTrigger} in {Request.Channel}");
@@ -113,7 +114,7 @@ namespace SSERemoteSerial
         }
 
         // One or More Serial Message(s) have been received
-        public void msg(string incommingMsg)
+        public void SerialMsg(string incommingMsg)
         {
             var commands = UnescapeAndSplit(incommingMsg);
 

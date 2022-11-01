@@ -57,7 +57,7 @@ namespace SPAD.neXt.DTO
         public int InstanceID { get; set; }
     }
 
-    public class ChannelJoin
+    public class ChannelEvent
     {
         public Guid ChannelId { get; set; } = Guid.Empty;
         public string Channel { get; set; }
@@ -90,11 +90,14 @@ namespace SPAD.neXt.DTO
 
 
     [Route("/challenge")]
-    public class Challenge : IReturn<ServiceReply<ChallengeResponse>>
+    public class Challenge : IReturnVoid
+    {
+    }
+    [Route("/challenge/accept")]
+    public class ChallengeAccept : IReturn<ServiceReply<ChallengeResponse>>
     {
         public string Token { get; set; }
     }
-
     public class ChallengeResponse
     {
         public string ApiKey { get; set; }
