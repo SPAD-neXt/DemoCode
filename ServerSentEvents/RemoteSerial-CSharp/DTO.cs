@@ -56,7 +56,13 @@ namespace SPAD.neXt.DTO
         public string DeviceID { get; set; }
         public int InstanceID { get; set; }
     }
-
+    [Route("/serialapi/{Session}/disconnect")]
+    public class SerialDisconnect : IReturnVoid
+    {
+        public string Session { get; set; }
+        public string DeviceID { get; set; }
+        public int InstanceID { get; set; }
+    }
     public class ChannelEvent
     {
         public Guid ChannelId { get; set; } = Guid.Empty;

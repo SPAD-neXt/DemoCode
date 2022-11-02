@@ -84,6 +84,7 @@ namespace SSERemoteSerial
 
             Console.WriteLine("Press enter to exit");
             Console.ReadLine();
+            Client.Post(new SerialDisconnect { Session = SessionId, DeviceID = DeviceID, InstanceID = InstanceID }); // Sync Call
         }
 
 

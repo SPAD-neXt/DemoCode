@@ -42,6 +42,12 @@ function SPAD_ConnectSerial()
 	 $.post(remoteHost+"serialapi/" + sessionId + "/connect?apikey="+apiKey, { DeviceID: DeviceID, InstanceID: InstanceID }, function () { }).fail(onError);
 };
 
+function SPAD_DisconnectSerial()
+{	
+	 $.post(remoteHost+"serialapi/" + sessionId + "/disconnect?apikey="+apiKey, { DeviceID: DeviceID, InstanceID: InstanceID }, function () { }).fail(onError);
+};
+
+
 function SPAD_ConnectEventSource()
 {
 // Authenticate to SPAD
