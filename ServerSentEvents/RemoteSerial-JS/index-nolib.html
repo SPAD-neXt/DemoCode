@@ -1,0 +1,121 @@
+<html>
+<head>
+<script src="js/jquery-3.2.1.min.js"></script>
+</head>
+<body>
+<button onclick='SPAD_CnnectSerial()'>Connect</button>
+<button onclick='SPAD_DisconnectSerial()'>Disconnect</button>
+<button onclick='SPAD_SendEvent("8,5,1;8,5,0;")'>Press Button</button>
+<script>
+
+var DeviceID = "{DD7E3826-E439-4484-B186-A1443F3BC531}"
+var AuthorID = "3870169da23f7cc86823120e6063521a";
+var Version = "1.0";
+var InstanceID = 1;
+
+var remoteHost = "http://127.0.0.1:28001/";
+
+var sessionId = "";
+var apiKey = "";
+
+var onError = function (e) {
+		console.log(e);
+        if (e.responseJSON && e.responseJSON.responseStatus)
+            $.ss.handlers["announce"](e.responseJSON.responseStatus.message);
+    };
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+
+let curStack = "";
+
+function SPAD_Push(msg) { curStack = curStack + msg; }
+
+function SPAD_SendEvent(msg)
+{	
+	$.post(remoteHost+"serialapi/" + sessionId + "/event?apikey="+apiKey, { Message: curStack + msg }, function () { }).fail(onError);
+	curStack = "";
+};
+
+function SPAD_ConnectSerial()
+{	
+	 $.post(remoteHost+"serialapi/" + sessionId + "/connect?apikey="+apiKey, { DeviceID: DeviceID, InstanceID: InstanceID }, function () { }).fail(onError);
+};
+
+function SPAD_DisconnectSerial()
+{	
+	 $.post(remoteHost+"serialapi/" + sessionId + "/disconnect?apikey="+apiKey, { DeviceID: DeviceID, InstanceID: InstanceID }, function () { }).fail(onError);
+};
+
+
+function SPAD_ConnectEventSource()
+{
+// Authenticate to SPAD
+  var source = new EventSource(remoteHost+'event-stream?apikey='+apiKey);
+  $(source).handleServerEvents({
+           handlers: {
+                  onConnect: function (subscription) {
+                       console.log("connected!");
+					   sessionId = subscription.id;
+					   SPAD_ConnectSerial();
+                  }, 
+                  onHeartbeat: function (msg, e) {
+                      //console.log("onHeartbeat", msg, e);
+                       },
+				  onError: function() { console.log("error");$.ss.eventSourceStop = true; },
+				  onStop: function() { console.log("stop");$.ss.eventSourceStop = true; },
+                  },
+			receivers: {
+				spad: {
+					debug: function(msg) { console.log('DEBUG: ',msg); },
+					ChannelJoin: function(msg) { console.log("Joined",msg.Channel); },
+					ChannelLeave: function(msg) { console.log("Left",msg.Channel); },
+					SerialMsg: function (spadmessage) {
+						parts = spadmessage.split(";")[0].split(",");
+						console.log(parts);
+						if (parts[1] == "INIT")
+						{
+							SPAD_SendEvent('0,SPAD,'+DeviceID+',Remote Api Demo,2,'+Version+',AUTHOR='+AuthorID+',PID=Demo,ALLOWLOCAL=2;');
+						}
+						if (parts[1] == "CONFIG")
+						{
+							console.log("CFG");
+							SPAD_Push('0,OPTION,ISGENERIC=1,PAGESUPPORT=0,CMD_COOLDOWN=50,DATA_COOLDOWN=100,VPSUPPORT=0,NOECHO=1;');
+							SPAD_Push("1,ADD,20,DataOut,S32,RW,Data Output;");
+							SPAD_Push("1,SUBSCRIBE,21,SIMCONNECT:AIRSPEED INDICATED,Knots,1.1;");
+							SPAD_Push('0,OUTPUT,1,L_ONE,LED,SPAD_LED,UI_FACE=3,IMG_ON=_PanelImages//LED_green.png,IMG_OFF=_PanelImages//LED_off.png,COL_0=Green,COL_1=Red,BEHAVIOR=ONOFF;');
+							SPAD_Push('0,INPUT,2000,E_TUNER,ENCODER,SPAD_DOUBLE_ENCODER;');
+							SPAD_Push('0,INPUT,5,I_APPR,PUSHBUTTON,SPAD_SIMPLEBUTTON,ROUTETO=E_TUNER,HIDDEN=1,_ROUTETO.PRESS=PUSH;');
+							SPAD_SendEvent('0,CONFIG;');
+						}
+						if (parts[1] == "SCANSTATE") { SPAD_SendEvent("0,STATESCAN;");}
+					}
+				}
+			}
+});
+}
+
+if (apiKey == "")
+{
+	console.log("Challenging SPAD");
+	$.post(remoteHost+"challenge",{ }, function () { }).fail(onError);
+	let challResponse = prompt("Enter Challenge Key","");
+	console.log("You entered",challResponse)
+	$.post(remoteHost+"challenge/accept?format=json",{ Token:challResponse }, function (data) { 
+	    if (data.Success)
+		{
+			apiKey = data.Result.ApiKey;
+			SPAD_ConnectEventSource(); 
+		}
+		else
+		{
+			alert("Challenge failed!");
+		}
+	}).fail(onError);
+}
+</script>
+</body>
+</html>
+
