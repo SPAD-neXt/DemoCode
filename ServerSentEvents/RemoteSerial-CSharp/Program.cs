@@ -138,6 +138,7 @@ namespace SSERemoteSerial
                                 Program.SPAD_SendSerialEvent("1,ADD,20,DataOut,S32,RW,Data Output;");
                                 Program.SPAD_SendSerialEvent("1,SUBSCRIBE,21,SIMCONNECT:AIRSPEED INDICATED,Knots,1.1;");
                                 Program.SPAD_SendSerialEvent("0,OUTPUT,1,L_ONE,LED,SPAD_LED,UI_FACE=3,IMG_ON=_PanelImages//LED_green.png,IMG_OFF=_PanelImages//LED_off.png,COL_0=Green,COL_1=Red,BEHAVIOR=ONOFF;");
+                                Program.SPAD_SendSerialEvent("0,OUTPUT,2,L_TWO,LED,SPAD_LED,UI_FACE=2,DYNLABEL=1");
                                 Program.SPAD_SendSerialEvent("0,INPUT,2000,E_TUNER,ENCODER,SPAD_DOUBLE_ENCODER;");
                                 Program.SPAD_SendSerialEvent("0,INPUT,5,I_APPR,PUSHBUTTON,SPAD_SIMPLEBUTTON,ROUTETO=E_TUNER,HIDDEN=1,_ROUTETO.PRESS=PUSH;");
                                 Program.SPAD_SendSerialEvent("0,CONFIG;");

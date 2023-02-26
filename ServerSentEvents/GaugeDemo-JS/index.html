@@ -1,0 +1,176 @@
+<html>
+<head>
+    <!-- Gauges from https://github.com/sebmatton/jQuery-Flight-Indicators -->
+    <!-- Flight Indicators library styles -->
+    <link rel="stylesheet" type="text/css" href="css/flightindicators.css" />
+
+<script src="js/jquery-3.2.1.min.js"></script>
+<script src="js/ss-utils.js"></script>
+<!-- Importing the FlightIndicators library -->
+<script src="js/jquery.flightindicators.js"></script>
+
+</head>
+<body>
+<button onclick='SPAD_Disconnect()'>Disconnect</button>
+<button onclick='SPAD_Update()'>Request Update</button>
+
+ <div class="examples">
+        <div>
+            <span id="airspeed"></span>
+            <span id="attitude"></span>
+            <span id="altimeter"></span>            
+        </div><div>
+            <span id="turn_coordinator"></span>
+            <span id="heading"></span>
+            <span id="variometer"></span>
+        </div>
+    </div>
+
+<script>
+
+/* All the stuff for the gauges */
+
+// DataBag 
+var gaugeData = { 
+	"A:AIRSPEED SELECT INDICATED OR TRUE,KNOTS":0,
+	"A:ATTITUDE INDICATOR BANK DEGREES,DEGREES":0,
+	"A:ATTITUDE INDICATOR PITCH DEGREES,DEGREES":0,
+	"A:INDICATED ALTITUDE,FEET":0,
+	"A:KOHLSMAN SETTING MB":0,
+	"A:DELTA HEADING RATE,RPM":0,
+	"A:AUTOPILOT HEADING LOCK DIR,DEGREES":0,
+	"A:VERTICAL SPEED,FEET PER MINUTE":0,
+ };
+
+// Helper vars for the gauges
+var attitude = $.flightIndicator('#attitude', 'attitude', {roll:50, pitch:-20, size:200, showBox : true});
+var heading = $.flightIndicator('#heading', 'heading', {heading:150, showBox:true});
+var variometer = $.flightIndicator('#variometer', 'variometer', {vario:-5, showBox:true});
+var airspeed = $.flightIndicator('#airspeed', 'airspeed', {showBox: false});
+var altimeter = $.flightIndicator('#altimeter', 'altimeter');
+var turn_coordinator = $.flightIndicator('#turn_coordinator', 'turn_coordinator', {turn:0});
+
+// The actual magic. Update the gauges
+function updategauges()
+{
+	airspeed.setAirSpeed(gaugeData["A:AIRSPEED SELECT INDICATED OR TRUE,KNOTS"]);
+	
+	attitude.setRoll(gaugeData["A:ATTITUDE INDICATOR BANK DEGREES,DEGREES"]);
+	attitude.setPitch(gaugeData["A:ATTITUDE INDICATOR PITCH DEGREES,DEGREES"]);
+	
+	altimeter.setAltitude(gaugeData["A:INDICATED ALTITUDE,FEET"]);
+	altimeter.setPressure(gaugeData["A:KOHLSMAN SETTING MB"]);
+
+	turn_coordinator.setTurn(gaugeData["A:DELTA HEADING RATE,RPM"]);
+
+	heading.setHeading(gaugeData["A:AUTOPILOT HEADING LOCK DIR,DEGREES"]);
+
+	variometer.setVario(gaugeData["A:VERTICAL SPEED,FEET PER MINUTE"]);
+}
+
+
+/* SPAD connection Stuff */
+var remoteHost = "http://127.0.0.1:28001/";
+
+var sessionId = "";
+var apiKey = "NONEED"; // apiKey is not needed anymore for a localhost connect, only for remote connects
+
+var onError = function (e) {
+		console.log(e);
+        if (e.responseJSON && e.responseJSON.responseStatus)
+            $.ss.handlers["announce"](e.responseJSON.responseStatus.message);
+    };
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+
+// Request SPAD to resend all subscribed Data
+function SPAD_Update()
+{	
+	$.post(remoteHost+"data/requestupdate/" + sessionId + "?apikey="+apiKey, { }, function () { }).fail(onError);
+};
+
+
+function SPAD_SubscribeData()
+{	
+	let dataKeys = JSON.stringify( Object.keys(gaugeData) );
+
+	// subscribe to the data we need
+    $.post(remoteHost+"data/subscribe/" + sessionId + "?apikey="+apiKey, { DataRefs: dataKeys }, function () { }).fail(onError);
+
+	// Disable batch update mode (default: 500ms) and request to get every change immediately
+	$.post(remoteHost+"data/config/" + sessionId + "?apikey="+apiKey, { SubcriptionInterval: -1 }, function () { }).fail(onError); // We do not want batched updates
+
+	// last but not least, let the maghic begin. update the gauges all 50ms
+	setInterval(updategauges, 50);
+};
+
+// unsubscribe from data
+function SPAD_Disconnect()
+{	
+	 $.post(remoteHost+"data/unsubscribe/" + sessionId + "?apikey="+apiKey, { DataRefs: [] }, function () { }).fail(onError);
+};
+
+// Connect to the SPAD SSE-Host
+function SPAD_ConnectEventSource()
+{
+// Authenticate to SPAD
+  var source = new EventSource(remoteHost+'event-stream?apikey='+apiKey);
+  $(source).handleServerEvents({
+           handlers: {
+                  onConnect: function (subscription) {
+                       console.log("connected!");
+					   sessionId = subscription.id;
+					   SPAD_SubscribeData(); // Since we are connected now, we can subscribe to the data
+                  }, 
+                  onHeartbeat: function (msg, e) {
+                      //console.log("onHeartbeat", msg, e);
+                       },
+				  onError: function() { console.log("error");$.ss.eventSourceStop = true; },
+				  onStop: function() { console.log("stop");$.ss.eventSourceStop = true; },
+                  },
+			receivers: {
+				spad: {
+					debug: function(msg) { console.log('DEBUG: ',msg); },
+					ChannelJoin: function(msg) { console.log("Joined",msg.Channel); },
+					ChannelLeave: function(msg) { console.log("Left",msg.Channel); },
+					DataUpdate: function(msg) {		// A databag with data update pairs has been received			
+						for (var i in msg.Data) {
+							gaugeData[i] = msg.Data[i];
+							console.log(i , "=>" , msg.Data[i]);
+						}
+					}
+				}
+			}
+		});
+}
+
+
+if (apiKey == "") // Only needed when connecting from remote
+{
+	console.log("Challenging SPAD");
+	$.post(remoteHost+"challenge",{ }, function () { }).fail(onError);
+	let challResponse = prompt("Enter Challenge Key","");
+	console.log("You entered",challResponse)
+	$.post(remoteHost+"challenge/accept?format=json",{ Token:challResponse }, function (data) { 
+	    if (data.Success)
+		{
+			apiKey = data.Result.ApiKey;
+			SPAD_ConnectEventSource(); 
+		}
+		else
+		{
+			alert("Challenge failed!");
+		}
+	}).fail(onError);
+}
+else // known key or local conenction, just start right away
+{
+	SPAD_ConnectEventSource();
+}
+</script>
+</body>
+</html>
+

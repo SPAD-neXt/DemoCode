@@ -4,6 +4,10 @@
 <script src="js/ss-utils.js"></script>
 </head>
 <body>
+<button onclick='SPAD_CnnectSerial()'>Connect</button>
+<button onclick='SPAD_DisconnectSerial()'>Disconnect</button>
+<button onclick='SPAD_SendEvent("8,5,1;8,5,0;")'>Press Button</button>
+
 <script>
 
 var DeviceID = "{DD7E3826-E439-4484-B186-A1443F3BC531}"
