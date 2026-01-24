@@ -92,6 +92,16 @@ function SPAD_Update()
 	$.post(remoteHost+"data/requestupdate/" + sessionId + "?apikey="+apiKey, { }, function () { }).fail(onError);
 };
 
+function SPAD_SetData(varname,varvalue)
+{	
+	$.post(remoteHost+"data/set" + "?apikey="+apiKey, { name:varname, value:varvalue }, function () { }).fail(onError);
+};
+
+function SPAD_GetData(varname)
+{	
+	$.post(remoteHost+"data/get" + "?apikey="+apiKey, { name:varname}, function (data) { console.log("received",data); }).fail(onError);
+};
+
 
 function SPAD_SubscribeData()
 {	
@@ -116,6 +126,7 @@ function SPAD_Disconnect()
 // Connect to the SPAD SSE-Host
 function SPAD_ConnectEventSource()
 {
+  SPAD_SetData("LVAR:SPAD_ZEST",100);
 // Authenticate to SPAD
   var source = new EventSource(remoteHost+'event-stream?apikey='+apiKey);
   $(source).handleServerEvents({
