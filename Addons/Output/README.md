@@ -5,7 +5,7 @@ Add MasterVolume control to SPAD.neXt (>= v0.9.23.31)
 # Installation
 * Exit SPAD.neXt
 * Download snAudioControl.zip
-* Create a directory \<DOCUMENTS\>/SPAD.neXt/addons (where \<DOCUMENTS\> is the SPAD.neXt Documents-Folder (My Documents by default, unless you changed that in SPAD.neXt)
+* Create a directory \<DOCUMENTS\>/SPAD.neXt/addons (where \<DOCUMENTS\/SPAD.neXt> is the SPAD.neXt Documents-Folder (My Documents/SPAD.neXt by default, unless you changed that in SPAD.neXt)
 * Copy the snAudioControl.dll from the zip into the new directory
 * Right click the dll , select Properties and make sure
   * The file is not blocked by windows defender (it should not say blocked at the bottom of the properies dialog, if it does click unblock)
