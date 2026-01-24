@@ -1,6 +1,6 @@
 **snAudioControl**
 
-Add MasterVolume control to SPAD.neXt
+Add MasterVolume control to SPAD.neXt (>= v0.9.23.31)
 
 # Installation
 * Exit SPAD.neXt
