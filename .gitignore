@@ -400,3 +400,8 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+/Scripts/Properties
+/Scripts/App.config
+/Scripts/Program.cs
+/Scripts/Scripts.csproj
+/Scripts/Scripts.slnx
