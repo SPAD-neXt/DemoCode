@@ -25,6 +25,7 @@ public class FileWriter : ScriptStub, IScriptAction2
 
     protected override void DeinitializeScript()
     {
+        var airraftName = EventSystem.GetExistingDataDefinition("LOCAL:SPAD_AIRCRAFT")?.GetValueAs<string>();
     }
 
     public void Execute(IApplication app, List<IEventActionParameter> actionParameters)
@@ -37,6 +38,9 @@ public class FileWriter : ScriptStub, IScriptAction2
             try
             {
                 File.WriteAllText(fileName, data);
+                // Change above line to 
+                // File.AppendAllText(fileName, data);
+                // to keep existing data instead of overwriting
             }
             catch (Exception ex)
             {

@@ -9,6 +9,7 @@ using SPAD.neXt.Interfaces.Configuration;
 using SPAD.neXt.Interfaces.Events;
 using SPAD.neXt.Interfaces.Scripting;
 using SPAD.neXt.Interfaces.Scripting.Stubs;
+
 public class UDPSender : ScriptStub, IScriptAction2
 {
     protected override string ScriptDataPrefix => "SCRIPT_SPDUDP";
@@ -19,9 +20,10 @@ public class UDPSender : ScriptStub, IScriptAction2
     private string lastError = string.Empty; // To prevent too many error warnings popping up
     protected override void InitializeScript()
     {
-        SetScriptDataValue("REMOTEIP", "127.0.0.1"); // Creates LOCAL:SCRIPT_SPDUDP_REMOTEIP
-        SetScriptDataValue("REMOTEPORT", 15090);// Creates LOCAL:SCRIPT_SPDUDP_REMOTEPORT
-        SetScriptDataValue("DEBUG", 0);// Creates LOCAL:SCRIPT_SPDUDP_DEBUG (Set to 1 to log outgoing data)
+        // Will create local variables only if they do not exist yet, so you can eg. change them in PROFILE_LOADED event
+        GetOrCreateScriptDataValue("REMOTEIP", "127.0.0.1"); // Creates LOCAL:SCRIPT_SPDUDP_REMOTEIP
+        GetOrCreateScriptDataValue("REMOTEPORT", 15090);// Creates LOCAL:SCRIPT_SPDUDP_REMOTEPORT
+        GetOrCreateScriptDataValue("DEBUG", 0);// Creates LOCAL:SCRIPT_SPDUDP_DEBUG (Set to 1 to log outgoing data)
     }
 
     protected override void DeinitializeScript()
