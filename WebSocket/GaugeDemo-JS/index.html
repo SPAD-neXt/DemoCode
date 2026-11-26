@@ -5,7 +5,6 @@
     <link rel="stylesheet" type="text/css" href="css/flightindicators.css" />
 
 <script src="js/jquery-3.2.1.min.js"></script>
-<script src="js/ss-utils.js"></script>
 <!-- Importing the FlightIndicators library -->
 <script src="js/jquery.flightindicators.js"></script>
 
@@ -69,107 +68,110 @@ function updategauges()
 }
 
 
-/* SPAD connection Stuff */
-var remoteHost = "http://127.0.0.1:28001/";
+/* SPAD connection stuff: data subscription over WebSocket */
+var remoteHost = "127.0.0.1:28001";
 
-var sessionId = "";
-var apiKey = "NONEED"; // apiKey is not needed anymore for a localhost connect, only for remote connects
+// The apiKey is only needed when this page runs on another computer than SPAD.neXt.
+// Leave it empty there to get the key with the challenge dialog, or enter your SPAD.neXt api key here.
+var apiKey = "NONEED";
+
+var socket = null;
+var nextCommandId = 1;
+var gaugeTimer = null;
 
 var onError = function (e) {
-		console.log(e);
-        if (e.responseJSON && e.responseJSON.responseStatus)
-            $.ss.handlers["announce"](e.responseJSON.responseStatus.message);
-    };
+	console.log(e);
+};
 
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+// Send one command to SPAD. Every command is answered with a "reply" message carrying the same id.
+function SPAD_Send(command)
+{
+	command.id = nextCommandId++;
+	socket.send(JSON.stringify(command));
 }
 
-
-// Request SPAD to resend all subscribed Data
+// Request SPAD to resend all subscribed data
 function SPAD_Update()
-{	
-	$.post(remoteHost+"data/requestupdate/" + sessionId + "?apikey="+apiKey, { }, function () { }).fail(onError);
-};
+{
+	SPAD_Send({ cmd: "requestupdate" });
+}
 
+// Reading and writing single values stays a normal web request
 function SPAD_SetData(varname,varvalue)
-{	
-	$.post(remoteHost+"data/set" + "?apikey="+apiKey, { name:varname, value:varvalue }, function () { }).fail(onError);
-};
+{
+	$.post("http://"+remoteHost+"/data/set?apikey="+apiKey, { name:varname, value:varvalue }, function () { }).fail(onError);
+}
 
 function SPAD_GetData(varname)
-{	
-	$.post(remoteHost+"data/get" + "?apikey="+apiKey, { name:varname}, function (data) { console.log("received",data); }).fail(onError);
-};
-
+{
+	$.post("http://"+remoteHost+"/data/get?apikey="+apiKey, { name:varname}, function (data) { console.log("received",data); }).fail(onError);
+}
 
 function SPAD_SubscribeData()
-{	
-	let dataKeys = JSON.stringify( Object.keys(gaugeData) );
-
+{
 	// subscribe to the data we need
-    $.post(remoteHost+"data/subscribe/" + sessionId + "?apikey="+apiKey, { DataRefs: dataKeys }, function () { }).fail(onError);
+	SPAD_Send({ cmd: "subscribe", dataRefs: Object.keys(gaugeData) });
 
 	// Disable batch update mode (default: 500ms) and request to get every change immediately
-	$.post(remoteHost+"data/config/" + sessionId + "?apikey="+apiKey, { SubcriptionInterval: -1 }, function () { }).fail(onError); // We do not want batched updates
+	SPAD_Send({ cmd: "config", interval: 0 });
 
-	// last but not least, let the maghic begin. update the gauges all 50ms
-	setInterval(updategauges, 50);
-};
+	// last but not least, let the magic begin. update the gauges all 50ms
+	if (gaugeTimer == null)
+		gaugeTimer = setInterval(updategauges, 50);
+}
 
-// unsubscribe from data
+// unsubscribe from all data (the connection stays open)
 function SPAD_Disconnect()
-{	
-	 $.post(remoteHost+"data/unsubscribe/" + sessionId + "?apikey="+apiKey, { DataRefs: [] }, function () { }).fail(onError);
-};
-
-// Connect to the SPAD SSE-Host
-function SPAD_ConnectEventSource()
 {
-  SPAD_SetData("LVAR:SPAD_ZEST",100);
-// Authenticate to SPAD
-  var source = new EventSource(remoteHost+'event-stream?apikey='+apiKey);
-  $(source).handleServerEvents({
-           handlers: {
-                  onConnect: function (subscription) {
-                       console.log("connected!");
-					   sessionId = subscription.id;
-					   SPAD_SubscribeData(); // Since we are connected now, we can subscribe to the data
-                  }, 
-                  onHeartbeat: function (msg, e) {
-                      //console.log("onHeartbeat", msg, e);
-                       },
-				  onError: function() { console.log("error");$.ss.eventSourceStop = true; },
-				  onStop: function() { console.log("stop");$.ss.eventSourceStop = true; },
-                  },
-			receivers: {
-				spad: {
-					debug: function(msg) { console.log('DEBUG: ',msg); },
-					ChannelJoin: function(msg) { console.log("Joined",msg.Channel); },
-					ChannelLeave: function(msg) { console.log("Left",msg.Channel); },
-					DataUpdate: function(msg) {		// A databag with data update pairs has been received			
-						for (var i in msg.Data) {
-							gaugeData[i] = msg.Data[i];
-							console.log(i , "=>" , msg.Data[i]);
-						}
-					}
+	SPAD_Send({ cmd: "unsubscribe", dataRefs: [] });
+}
+
+// Connect to the SPAD data WebSocket
+function SPAD_Connect()
+{
+	socket = new WebSocket("ws://"+remoteHost+"/data?apikey="+encodeURIComponent(apiKey));
+
+	socket.onmessage = function (event) {
+		var msg = JSON.parse(event.data);
+		switch (msg.type) {
+			case "connected":	// first message after the connection is open
+				console.log("connected to SPAD.neXt", msg.version);
+				SPAD_SubscribeData();
+				break;
+			case "update":		// a databag with data update pairs has been received
+				for (var i in msg.data) {
+					gaugeData[i] = msg.data[i];
+					console.log(i , "=>" , msg.data[i]);
 				}
-			}
-		});
+				break;
+			case "reply":		// answer to a command
+				if (!msg.success)
+					console.log("command failed", msg);
+				else if (msg.cmd == "subscribe" && msg.failed.length > 0)
+					console.log("not subscribed", msg.failed);
+				break;
+		}
+	};
+
+	// Subscriptions end with the connection. Connect again and subscribe again.
+	socket.onclose = function () {
+		console.log("connection closed, trying again in 3 seconds");
+		setTimeout(SPAD_Connect, 3000);
+	};
 }
 
 
 if (apiKey == "") // Only needed when connecting from remote
 {
 	console.log("Challenging SPAD");
-	$.post(remoteHost+"challenge",{ }, function () { }).fail(onError);
+	$.post("http://"+remoteHost+"/challenge",{ }, function () { }).fail(onError);
 	let challResponse = prompt("Enter Challenge Key","");
 	console.log("You entered",challResponse)
-	$.post(remoteHost+"challenge/accept?format=json",{ Token:challResponse }, function (data) { 
+	$.post("http://"+remoteHost+"/challenge/accept?format=json",{ Token:challResponse }, function (data) { 
 	    if (data.Success)
 		{
 			apiKey = data.Result.ApiKey;
-			SPAD_ConnectEventSource(); 
+			SPAD_Connect(); 
 		}
 		else
 		{
@@ -177,9 +179,9 @@ if (apiKey == "") // Only needed when connecting from remote
 		}
 	}).fail(onError);
 }
-else // known key or local conenction, just start right away
+else // known key or local connection, just start right away
 {
-	SPAD_ConnectEventSource();
+	SPAD_Connect();
 }
 </script>
 </body>
